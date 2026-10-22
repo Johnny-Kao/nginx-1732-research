@@ -1,0 +1,44 @@
+name: nginx 1732 research
+on:
+  push:
+    branches: [research/issue-1732-early-hints]
+    paths:
+      - src/http/ngx_http_upstream.c
+      - research/issue-1732/**
+      - .github/workflows/nginx-1732-research.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux-validation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential libpcre2-dev libssl-dev zlib1g-dev libcryptx-perl
+      - name: Configure and build
+        run: |
+          ./auto/configure --with-http_ssl_module --with-http_v2_module --with-http_v3_module --with-debug
+          make -j2
+          ./objs/nginx -V
+      - name: Verify bounded hints (end-to-end)
+        run: python3 research/issue-1732/smoke.py
+      - name: Official nginx-tests
+        run: |
+          git clone --depth 1 https://github.com/nginx/nginx-tests.git /tmp/nginx-tests
+          cd /tmp/nginx-tests
+          TEST_NGINX_BINARY="$GITHUB_WORKSPACE/objs/nginx" prove proxy.t upstream.t proxy_early_hints.t grpc_early_hints.t
+      - name: Preserve failure diagnostics
+        if: failure()
+        run: |
+          for f in /tmp/nginx-tests/t/*/logs/error.log; do
+            if [ -f "$f" ]; then
+              echo "=== $f"
+              tail -n 100 "$f"
+            fi
+          done
