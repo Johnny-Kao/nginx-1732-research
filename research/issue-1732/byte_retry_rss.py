@@ -94,7 +94,9 @@ def outcome(r):
 
 # Exact one-byte transition, varying size of ONE otherwise-identical 103 message.
 lo,hi=0,3000
-assert b"200 OK" in single(lo,count=40)["raw"],"baseline small hint must work"
+basecheck=single(lo,count=40)
+print("BASE DEBUG", {"status":outcome(basecheck),"hits":basecheck["hits"],"raw":repr(basecheck["raw"][:300]),"errors":basecheck["logs"][-1200:]},flush=True)
+assert b"200 OK" in basecheck["raw"],"baseline small hint must work"
 assert b"502 Bad Gateway" in single(hi,count=40)["raw"],"large hint should be rejected"
 while hi-lo>1:
     mid=(lo+hi)//2
