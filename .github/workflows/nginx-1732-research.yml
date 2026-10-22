@@ -30,6 +30,15 @@ jobs:
         run: python3 research/issue-1732/edge_cases.py
       - name: Byte boundary, retry, RSS
         run: python3 research/issue-1732/byte_retry_rss.py
+      - name: Build pristine upstream master for A/B
+        run: |
+          git worktree add --detach /tmp/nginx-1732-original 140aa942711868a8daeb95810bc9a81f272ada72
+          cd /tmp/nginx-1732-original
+          ./auto/configure --with-http_ssl_module --with-http_v2_module --with-http_v3_module --with-debug
+          make -j2
+      - name: Unpatched versus patched RSS A/B
+        run: |
+          python3 research/issue-1732/rss_ab.py /tmp/nginx-1732-original/objs/nginx "$GITHUB_WORKSPACE/objs/nginx"
       - name: Official upstream nginx-tests (required, no skips)
         run: |
           git clone --depth 1 https://github.com/nginx/nginx-tests.git /tmp/nginx-tests
