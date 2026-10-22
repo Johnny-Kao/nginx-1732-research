@@ -94,14 +94,14 @@ def outcome(r):
 
 # Exact one-byte transition, varying size of ONE otherwise-identical 103 message.
 lo,hi=0,3000
-assert b"200 OK" in single(lo,count=61)["raw"],"baseline small hint must work"
-assert b"502 Bad Gateway" in single(hi,count=61)["raw"],"large hint should be rejected"
+assert b"200 OK" in single(lo,count=40)["raw"],"baseline small hint must work"
+assert b"502 Bad Gateway" in single(hi,count=40)["raw"],"large hint should be rejected"
 while hi-lo>1:
     mid=(lo+hi)//2
-    r=single(mid,count=61)
+    r=single(mid,count=40)
     if b"200 OK" in r["raw"]:lo=mid
     else:hi=mid
-ok=single(lo,count=61);bad=single(hi,count=61)
+ok=single(lo,count=40);bad=single(hi,count=40)
 print("ONE-BYTE BOUNDARY", {"last_accepted_padding":lo,"first_rejected_padding":hi,
       "accepted":outcome(ok),"rejected":outcome(bad)},flush=True)
 assert hi==lo+1
