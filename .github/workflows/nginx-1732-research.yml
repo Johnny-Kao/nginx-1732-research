@@ -32,7 +32,9 @@ jobs:
         run: python3 research/issue-1732/byte_retry_rss.py
       - name: Build pristine upstream master for A/B
         run: |
-          git worktree add --detach /tmp/nginx-1732-original 140aa942711868a8daeb95810bc9a81f272ada72
+          git fetch --depth=1 origin master
+          test "$(git rev-parse FETCH_HEAD)" = 140aa942711868a8daeb95810bc9a81f272ada72
+          git worktree add --detach /tmp/nginx-1732-original FETCH_HEAD
           cd /tmp/nginx-1732-original
           ./auto/configure --with-http_ssl_module --with-http_v2_module --with-http_v3_module --with-debug
           make -j2
