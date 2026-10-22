@@ -36,7 +36,7 @@ def single(padding, *, count=1, health=False, invalid_first=False):
                             conn.sendall(b"HTTP/1.1 999 Nope\r\n\r\n")
                         else:
                             item=BASE+b"X-Pad: "+b"x"*padding+b"\r\n\r\n"
-                            for _ in range(count-1): conn.sendall(BASE+b"\\r\\n")
+                            for _ in range(count-1): conn.sendall(BASE+b"\r\n")
                             conn.sendall(item)
                             conn.sendall(END)
                     except (BrokenPipeError,ConnectionResetError,OSError):
