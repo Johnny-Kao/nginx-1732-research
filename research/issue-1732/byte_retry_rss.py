@@ -36,7 +36,8 @@ def single(padding, *, count=1, health=False, invalid_first=False):
                             conn.sendall(b"HTTP/1.1 999 Nope\r\n\r\n")
                         else:
                             item=BASE+b"X-Pad: "+b"x"*padding+b"\r\n\r\n"
-                            for _ in range(count): conn.sendall(item)
+                            for _ in range(count-1): conn.sendall(BASE+b"\\r\\n")
+                            conn.sendall(item)
                             conn.sendall(END)
                     except (BrokenPipeError,ConnectionResetError,OSError):
                         pass
@@ -93,14 +94,14 @@ def outcome(r):
 
 # Exact one-byte transition, varying size of ONE otherwise-identical 103 message.
 lo,hi=0,3000
-assert b"200 OK" in single(lo)["raw"],"baseline small hint must work"
-assert b"502 Bad Gateway" in single(hi)["raw"],"large hint should be rejected"
+assert b"200 OK" in single(lo,count=61)["raw"],"baseline small hint must work"
+assert b"502 Bad Gateway" in single(hi,count=61)["raw"],"large hint should be rejected"
 while hi-lo>1:
     mid=(lo+hi)//2
-    r=single(mid)
+    r=single(mid,count=61)
     if b"200 OK" in r["raw"]:lo=mid
     else:hi=mid
-ok=single(lo);bad=single(hi)
+ok=single(lo,count=61);bad=single(hi,count=61)
 print("ONE-BYTE BOUNDARY", {"last_accepted_padding":lo,"first_rejected_padding":hi,
       "accepted":outcome(ok),"rejected":outcome(bad)},flush=True)
 assert hi==lo+1
