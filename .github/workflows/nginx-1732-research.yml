@@ -28,6 +28,8 @@ jobs:
           ./objs/nginx -V
       - name: Abnormal Early Hints boundary tests
         run: python3 research/issue-1732/edge_cases.py
+      - name: Byte boundary, retry, RSS
+        run: python3 research/issue-1732/byte_retry_rss.py
       - name: Official upstream nginx-tests (required, no skips)
         run: |
           git clone --depth 1 https://github.com/nginx/nginx-tests.git /tmp/nginx-tests
