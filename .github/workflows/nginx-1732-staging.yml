@@ -1,0 +1,73 @@
+name: nginx 1732 staging validation
+on:
+  push:
+    branches: [research/issue-1732-early-hints]
+    paths:
+      - .github/workflows/nginx-1732-staging.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  staging-gcc:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout exact staging commit
+        uses: actions/checkout@v4
+        with:
+          repository: Johnny-Kao/nginx
+          ref: f143c8cc928fd35c7e708f7431a2ad7f117a2e01
+          path: nginx
+          persist-credentials: false
+      - name: Verify staging identity and clean delta
+        run: |
+          cd nginx
+          test "$(git rev-parse HEAD)" = f143c8cc928fd35c7e708f7431a2ad7f117a2e01
+          git fetch --depth=1 origin master
+          test "$(git rev-parse FETCH_HEAD)" = 140aa942711868a8daeb95810bc9a81f272ada72
+          git diff --check FETCH_HEAD HEAD
+          git diff --name-only FETCH_HEAD HEAD | tee /tmp/changed-files
+          test "$(wc -l < /tmp/changed-files)" -eq 1
+          test "$(cat /tmp/changed-files)" = src/http/ngx_http_upstream.c
+          git diff --numstat FETCH_HEAD HEAD
+      - name: Checkout research test harness separately
+        uses: actions/checkout@v4
+        with:
+          path: harness
+          persist-credentials: false
+      - name: Install build and test dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential clang libpcre2-dev libssl-dev zlib1g-dev libcryptx-perl openssl
+      - name: Build exact staging HEAD
+        working-directory: nginx
+        run: |
+          ./auto/configure --with-http_ssl_module --with-http_v2_module --with-http_v3_module --with-debug
+          make -j2
+          ./objs/nginx -V
+      - name: Assert custom boundary, retry and RSS tests
+        working-directory: nginx
+        run: |
+          python3 ../harness/research/issue-1732/edge_cases.py
+          python3 ../harness/research/issue-1732/byte_retry_rss.py
+      - name: Obtain official upstream nginx-tests
+        run: git clone --depth=1 https://github.com/nginx/nginx-tests.git /tmp/nginx-tests
+      - name: Focused official nginx-tests
+        working-directory: /tmp/nginx-tests
+        env:
+          TEST_NGINX_BINARY: ${{ github.workspace }}/nginx/objs/nginx
+        run: prove -v proxy.t upstream.t proxy_early_hints.t grpc_early_hints.t
+      - name: Full official nginx-tests suite
+        working-directory: /tmp/nginx-tests
+        env:
+          TEST_NGINX_BINARY: ${{ github.workspace }}/nginx/objs/nginx
+        run: prove *.t 2>&1 | tee /tmp/nginx-staging-full-suite.log; test ${PIPESTATUS[0]} -eq 0
+      - name: Save full suite log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nginx-1732-staging-gcc-logs
+          path: /tmp/nginx-staging-full-suite.log
+          if-no-files-found: ignore
