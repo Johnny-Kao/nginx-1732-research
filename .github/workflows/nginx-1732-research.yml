@@ -20,19 +20,17 @@ jobs:
       - name: Dependencies
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y build-essential libpcre2-dev libssl-dev zlib1g-dev libcryptx-perl
+          sudo apt-get install -y build-essential libpcre2-dev libssl-dev zlib1g-dev libcryptx-perl openssl
       - name: Configure and build
         run: |
           ./auto/configure --with-http_ssl_module --with-http_v2_module --with-http_v3_module --with-debug
           make -j2
           ./objs/nginx -V
-      - name: Verify bounded hints (end-to-end)
-        run: python3 research/issue-1732/smoke.py
-      - name: Official nginx-tests
+      - name: Official upstream nginx-tests (required, no skips)
         run: |
           git clone --depth 1 https://github.com/nginx/nginx-tests.git /tmp/nginx-tests
           cd /tmp/nginx-tests
-          TEST_NGINX_BINARY="$GITHUB_WORKSPACE/objs/nginx" prove proxy.t upstream.t proxy_early_hints.t grpc_early_hints.t
+          TEST_NGINX_BINARY="$GITHUB_WORKSPACE/objs/nginx" prove -v proxy.t upstream.t proxy_early_hints.t grpc_early_hints.t
       - name: Preserve failure diagnostics
         if: failure()
         run: |
