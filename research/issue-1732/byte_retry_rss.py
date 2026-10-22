@@ -113,7 +113,7 @@ assert b"200 OK" in ok["raw"] and b"502 Bad Gateway" in bad["raw"]
 # transparently retry once response output has already started.
 r=single(0,count=100,health=True)
 print("AFTER_HINT_FAILURE_RETRY",{"status_lines":outcome(r),"upstream_hits":r["hits"]},flush=True)
-assert r["hits"][0]==1,"broken first upstream was not contacted"
+assert r["hits"]==[1,1] and b"200 OK" in r["raw"],"invalid-header retry to healthy upstream did not succeed"
 # No fragile assertion about retry policy before observing actual upstream behavior.
 
 # Resource measurements use the actual nginx pid (master_process off), and a slow,
@@ -131,7 +131,7 @@ def rss_case(n):
                     for i in range(n):
                         try:c.sendall(item)
                         except (BrokenPipeError,ConnectionResetError):break
-                        if i%20==0:time.sleep(.001)
+                        if i<100:time.sleep(.004)
                     try:c.sendall(END)
                     except OSError:pass
             finally:srv.close()
@@ -167,7 +167,7 @@ http {{ server {{ listen 127.0.0.1:{front}; location / {{ proxy_buffer_size 4k; 
                 time.sleep(.005)
             ct.join(timeout=15)
             print("RSS",{"blocks_offered":n,"samples":len(vals),"min_kib":min(vals),"peak_kib":max(vals),"delta_kib":max(vals)-min(vals)},flush=True)
-            assert vals and max(vals)-min(vals)<16384,"patched nginx RSS increased by >16 MiB"
+            assert len(vals)>=10 and max(vals)-min(vals)<16384,"patched nginx RSS increased by >16 MiB"
         finally:
             p.terminate()
             try:p.wait(timeout=3)
