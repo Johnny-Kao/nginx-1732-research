@@ -219,7 +219,7 @@ def probe(label, case_id, mode, max_seconds, cancel=False):
                 errors.append(f"health request failed: {exc}")
             with dns.lock:
                 inflight = dns.inflight_a
-                responded = dns.snapshot(case_id) if False else dns.counts[(case_id, "A")]
+                responded = dns.counts[(case_id, "A")]
             if inflight:
                 pending_samples += 1
             targets, depth = CASES[case_id]

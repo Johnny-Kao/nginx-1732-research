@@ -6,6 +6,7 @@ on:
       - research/resolver-srv-fanout-001
     paths:
       - 'research/resolver_srv_fanout.py'
+      - 'research/resolver_srv_runtime.py'
       - '.github/workflows/resolver-srv-fanout.yml'
   workflow_dispatch:
 
@@ -39,6 +40,11 @@ jobs:
         run: |
           set -euo pipefail
           python3 research/resolver_srv_fanout.py
+
+      - name: Profile live worker impact, DNS timeout, and cancellation
+        run: |
+          set -euo pipefail
+          python3 research/resolver_srv_runtime.py
 
       - name: Upload DNS, process logs, and measurements
         if: always()
