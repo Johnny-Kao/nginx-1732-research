@@ -1,0 +1,49 @@
+name: Bounded NGINX SRV Fan-Out Research
+
+on:
+  push:
+    branches:
+      - research/resolver-srv-fanout-001
+    paths:
+      - 'research/resolver_srv_fanout.py'
+      - '.github/workflows/resolver-srv-fanout.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: resolver-srv-fanout
+  cancel-in-progress: true
+
+jobs:
+  resolver-fanout:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Check out isolated research branch
+        uses: actions/checkout@v4
+
+      - name: Build NGINX from repository source
+        run: |
+          set -euo pipefail
+          ./auto/configure \
+            --prefix="$GITHUB_WORKSPACE/.srv-lab/nginx" \
+            --without-http_rewrite_module \
+            --without-http_gzip_module
+          make -j2
+          ./objs/nginx -V
+
+      - name: Run bounded loopback-only SRV/CNAME measurements
+        run: |
+          set -euo pipefail
+          python3 research/resolver_srv_fanout.py
+
+      - name: Upload DNS, process logs, and measurements
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resolver-srv-fanout-evidence
+          path: research/srv-fanout-output/
+          if-no-files-found: warn
+          retention-days: 14
