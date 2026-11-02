@@ -218,6 +218,7 @@ http {{
 def run_case(dns, case_id, targets, depth):
     prefix = OUT / f"case-{case_id}"
     prefix.mkdir(parents=True, exist_ok=True)
+    (prefix / "logs").mkdir(exist_ok=True)
     conf = prefix / "nginx.conf"
     listen_port = free_port()
     conf.write_text(nginx_config(prefix, dns.server_address[1], listen_port, case_id))
