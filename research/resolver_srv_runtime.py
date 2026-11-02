@@ -220,7 +220,7 @@ def probe(label, case_id, mode, max_seconds, cancel=False):
             with dns.lock:
                 inflight = dns.inflight_a
                 responded = dns.counts[(case_id, "A")]
-            if inflight:
+            if inflight or (mode == "drop" and dns.seen_a > responded):
                 pending_samples += 1
             targets, depth = CASES[case_id]
             if mode == "delay" and responded >= targets * (depth + 1):
@@ -234,12 +234,14 @@ def probe(label, case_id, mode, max_seconds, cancel=False):
             errors.append("no A queries were dropped")
         if cancel and not done:
             errors.append("NGINX cancellation did not occur")
+        if cancel and p.returncode not in (0, -15):
+            errors.append(f"NGINX unexpectedly exited after cancellation: {p.returncode}")
         if cancel and pending_samples < 1:
             errors.append("no in-flight DNS query observed at termination")
         if mode == "delay":
             counts = dns.snapshot(case_id)
             targets, depth = CASES[case_id]
-            if counts["A"] < targets * (depth + 1):
+            if not cancel and counts["A"] < targets * (depth + 1):
                 errors.append(f"resolution incomplete: {counts['A']} A queries")
         duration = max(0.001, last_time - first_time)
         # CPU ticks are a process-family approximation, not a calibrated CPU %.
