@@ -1114,27 +1114,23 @@ ngx_http_upstream_cache_send(ngx_http_request_t *r, ngx_http_upstream_t *u)
     u->buffer = *c->buf;
     u->buffer.pos += c->header_start;
 
-    /*
-     * Research-only list reuse prototype: retain the first allocation.
-     * Reset list links, as ngx_list_push() does not reuse linked parts.
-     * This tests whether this strategy alone bounds RSS.
-     */
-    headers = u->headers_in.headers;
-    trailers = u->headers_in.trailers;
-
     ngx_memzero(&u->headers_in, sizeof(ngx_http_upstream_headers_in_t));
     u->headers_in.content_length_n = -1;
     u->headers_in.last_modified_time = -1;
 
-    u->headers_in.headers = headers;
-    u->headers_in.headers.part.nelts = 0;
-    u->headers_in.headers.part.next = NULL;
-    u->headers_in.headers.last = &u->headers_in.headers.part;
+    if (ngx_list_init(&u->headers_in.headers, r->pool, 8,
+                      sizeof(ngx_table_elt_t))
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
 
-    u->headers_in.trailers = trailers;
-    u->headers_in.trailers.part.nelts = 0;
-    u->headers_in.trailers.part.next = NULL;
-    u->headers_in.trailers.last = &u->headers_in.trailers.part;
+    if (ngx_list_init(&u->headers_in.trailers, r->pool, 2,
+                      sizeof(ngx_table_elt_t))
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
 
     rc = u->process_header(r);
 
@@ -2733,23 +2729,26 @@ ngx_http_upstream_process_early_hints(ngx_http_request_t *r,
 
     ngx_http_clean_header(r);
 
+    /*
+     * Research-only list reuse prototype: retain first-part allocations.
+     * ngx_list_push() never reuses linked parts; deliberately test RSS.
+     */
+    headers = u->headers_in.headers;
+    trailers = u->headers_in.trailers;
+
     ngx_memzero(&u->headers_in, sizeof(ngx_http_upstream_headers_in_t));
     u->headers_in.content_length_n = -1;
     u->headers_in.last_modified_time = -1;
 
-    if (ngx_list_init(&u->headers_in.headers, r->pool, 8,
-                      sizeof(ngx_table_elt_t))
-        != NGX_OK)
-    {
-        return NGX_ERROR;
-    }
+    u->headers_in.headers = headers;
+    u->headers_in.headers.part.nelts = 0;
+    u->headers_in.headers.part.next = NULL;
+    u->headers_in.headers.last = &u->headers_in.headers.part;
 
-    if (ngx_list_init(&u->headers_in.trailers, r->pool, 2,
-                      sizeof(ngx_table_elt_t))
-        != NGX_OK)
-    {
-        return NGX_ERROR;
-    }
+    u->headers_in.trailers = trailers;
+    u->headers_in.trailers.part.nelts = 0;
+    u->headers_in.trailers.part.next = NULL;
+    u->headers_in.trailers.last = &u->headers_in.trailers.part;
 
     p = u->buffer.pos;
 
