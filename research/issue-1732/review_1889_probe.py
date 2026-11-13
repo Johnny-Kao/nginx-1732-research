@@ -47,7 +47,7 @@ http {{
       proxy_next_upstream error timeout{' invalid_header' if retry else ''};
       proxy_next_upstream_tries 2;
       proxy_read_timeout 5s;
-      proxy_pass http://backend; }}
+      {"early_hints 1;" if forward else ""}\n      proxy_pass http://backend; }}
   }}
 }}
 """)
