@@ -14,7 +14,7 @@ permissions:
 jobs:
   linux-validation:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - name: Dependencies
@@ -41,6 +41,16 @@ jobs:
       - name: Unpatched versus patched RSS A/B
         run: |
           python3 research/issue-1732/rss_ab.py /tmp/nginx-1732-original/objs/nginx "$GITHUB_WORKSPACE/objs/nginx"
+      - name: Review 1889 probes on original one-line fix
+        run: python3 research/issue-1732/review_1889_probe.py
+      - name: Review 1889 probes on anuj exact commit
+        run: |
+          curl --fail --location --retry 3 --output src/http/ngx_http_upstream.c \
+            https://raw.githubusercontent.com/nginx/nginx/1a9addea6ec1eb24413b729302ba4f74cb4e6819/src/http/ngx_http_upstream.c
+          grep -q 'upstream sent too big early hints' src/http/ngx_http_upstream.c
+          make -j2
+          python3 research/issue-1732/review_1889_probe.py
+          python3 research/issue-1732/byte_retry_rss.py
       - name: Official upstream nginx-tests (required, no skips)
         run: |
           git clone --depth 1 https://github.com/nginx/nginx-tests.git /tmp/nginx-tests
