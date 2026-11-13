@@ -47,12 +47,11 @@ http {{
       proxy_next_upstream error timeout{' invalid_header' if retry else ''};
       proxy_next_upstream_tries 2;
       proxy_read_timeout 5s;
-      {"early_hints 1;" if forward else ""}\n      proxy_pass http://backend; }}
+      {"early_hints 1;" if forward else ""}
+      proxy_pass http://backend; }}
   }}
 }}
 """)
-        # Optionally override the upstream HTTP/1.1 early-hints forwarding by
-        # testing a client that does not advertise 103 support.
         p=subprocess.Popen([BIN,"-p",d,"-c",str(root/"nginx.conf")],
                            stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
         try:
@@ -63,9 +62,7 @@ http {{
                 except OSError:time.sleep(.025)
             with socket.create_connection(("127.0.0.1",front),timeout=10) as c:
                 c.settimeout(10)
-                # Explicit HTTP/1.0 client disables 103 forwarding in default config.
-                version="HTTP/1.1" if forward else "HTTP/1.0"
-                c.sendall(f"GET / {version}\r\nHost: x\r\nConnection: close\r\n\r\n".encode())
+                c.sendall(b"GET / HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n")
                 raw=bytearray()
                 try:
                     while True:
